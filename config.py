@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config(object):
-    SECRET_KEY = os.environ.get('USER_SECRET_KEY')
-
+    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY')
+    
     BLOB_ACCOUNT = os.environ.get('BLOB_ACCOUNT')
     BLOB_CONNECTION_STRING = os.environ.get('BLOB_CONNECTION_STRING')
     BLOB_CONTAINER = os.environ.get('BLOB_CONTAINER')
@@ -32,9 +32,9 @@ class Config(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     ### Info for MS Authentication ###
-    CLIENT_SECRET = os.environ.get("USER_CLIENT_SECRET")
-    if not CLIENT_SECRET:
-        raise ValueError("Need to define CLIENT_SECRET environment variable")
+    USER_CLIENT_SECRET = os.environ.get("USER_CLIENT_SECRET")
+    if not USER_CLIENT_SECRET:
+        raise ValueError("Need to define USER_CLIENT_SECRET environment variable")
 
     AUTHORITY = os.environ.get('AUTHORITY', "https://login.microsoftonline.com/common")
     APP_CLIENT_ID = os.environ.get('APP_CLIENT_ID')

@@ -3,7 +3,7 @@ Routes and views for the flask application.
 """
 
 from datetime import datetime
-from flask import render_template, flash, redirect, request, session, url_for
+from flask import logging, render_template, flash, redirect, request, session, url_for
 # from werkzeug.urls import url_parse
 from urllib.parse import urlparse
 from config import Config
@@ -13,17 +13,15 @@ from flask_login import current_user, login_user, logout_user, login_required
 from FlaskWebProject.models import User, Post
 import msal
 import uuid
-from FlaskWebProject.logger import log_method, get_logger
 
 imageSourceUrl = 'https://'+ app.config['BLOB_ACCOUNT']  + '.blob.core.windows.net/' + app.config['BLOB_CONTAINER']  + '/'
-
-logger = get_logger()
 
 @app.route('/')
 @app.route('/home')
 @login_required
-@log_method
 def home():
+    app.logger.info('Entering home')
+    
     user = User.query.filter_by(username=current_user.username).first_or_404()
     posts = Post.query.all()
     return render_template(
@@ -35,7 +33,6 @@ def home():
 
 @app.route('/new_post', methods=['GET', 'POST'])
 @login_required
-@log_method
 def new_post():
     form = PostForm(request.form)
     if form.validate_on_submit():
@@ -53,7 +50,6 @@ def new_post():
 
 @app.route('/post/<int:id>', methods=['GET', 'POST'])
 @login_required
-@log_method
 def post(id):
     post = Post.query.get_or_404(int(id))
     form = PostForm(formdata=request.form, obj=post)
@@ -70,7 +66,6 @@ def post(id):
     )
 
 @app.route('/login', methods=['GET', 'POST'])
-@log_method
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
@@ -81,19 +76,19 @@ def login():
             user = User.query.filter_by(username=form.username.data).first()
             
             if user is None or not user.check_password(form.password.data):
-                logger.warning(f"Invalid login attempt for user: {form.username.data}")
+                app.logger.warning(f"Invalid login attempt for user: {form.username.data}")
                 flash('Invalid username or password')
                 return redirect(url_for('login'))
             
             login_user(user, remember=form.remember_me.data)
-            logger.info(f"User {user.username} logged in successfully")
+            app.logger.info(f"User {user.username} logged in successfully")
             
             next_page = request.args.get('next')
             if not next_page or urlparse(next_page).netloc != '':
                 next_page = url_for('home')
             return redirect(next_page)
         except Exception as e:
-            logger.error(f"Login error: {str(e)}")
+            app.logger.error(f"Login error: {str(e)}")
             raise
     
     session["state"] = str(uuid.uuid4())
@@ -102,7 +97,6 @@ def login():
     return render_template('login.html', title='Sign In', form=form, auth_url=auth_url)
 
 @app.route(Config.REDIRECT_PATH)
-@log_method
 def authorized():
     if request.args.get('state') != session.get("state"):
         return redirect(url_for("home"))
@@ -141,7 +135,6 @@ def authorized():
     return redirect(url_for('home'))
 
 @app.route('/logout')
-@log_method
 def logout():
     logout_user()
     if session.get("user"): # Used MS Login
@@ -169,7 +162,7 @@ def _save_cache(cache):
 def _build_msal_app(cache=None, authority=None):
     return msal.ConfidentialClientApplication(
         Config.APP_CLIENT_ID, authority=authority or Config.AUTHORITY,
-        client_credential=Config.CLIENT_SECRET, token_cache=cache)
+        client_credential=Config.USER_CLIENT_SECRET, token_cache=cache)
 
 def _build_auth_url(authority=None, scopes=None, state=None):
     return _build_msal_app(authority=authority).get_authorization_request_url(
@@ -179,7 +172,6 @@ def _build_auth_url(authority=None, scopes=None, state=None):
 
 @app.route('/delete/<int:id>', methods=['POST'])
 @login_required
-@log_method
 def delete_post(id):
     post = Post.query.get_or_404(int(id))
     if post.delete():
@@ -188,7 +180,6 @@ def delete_post(id):
 
 @app.route('/remove_image/<int:id>', methods=['POST'])
 @login_required
-@log_method
 def remove_image(id):
     post = Post.query.get_or_404(int(id))
     if post.remove_image():
